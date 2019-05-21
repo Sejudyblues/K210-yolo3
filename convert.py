@@ -55,7 +55,6 @@ def unique_config_sections(config_file):
     output_stream.seek(0)
     return output_stream
 
-# %%
 
 
 def _main(args):

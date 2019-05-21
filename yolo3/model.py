@@ -76,15 +76,11 @@ def yolo_body(inputs, num_anchors, num_classes):
     darknet = Model(inputs, darknet_body(inputs))
     x, y1 = make_last_layers(darknet.output, 512, num_anchors * (num_classes + 5))
 
-    x = compose(
-        DarknetConv2D_BN_Leaky(256, (1, 1)),
-        UpSampling2D(2))(x)
+    x = compose(DarknetConv2D_BN_Leaky(256, (1, 1)), UpSampling2D(2))(x)
     x = Concatenate()([x, darknet.layers[152].output])
     x, y2 = make_last_layers(x, 256, num_anchors * (num_classes + 5))
 
-    x = compose(
-        DarknetConv2D_BN_Leaky(128, (1, 1)),
-        UpSampling2D(2))(x)
+    x = compose(DarknetConv2D_BN_Leaky(128, (1, 1)), UpSampling2D(2))(x)
     x = Concatenate()([x, darknet.layers[92].output])
     x, y3 = make_last_layers(x, 128, num_anchors * (num_classes + 5))
 
@@ -216,7 +212,6 @@ def yolo_eval(yolo_outputs,
     scores_ = []
     classes_ = []
     for c in range(num_classes):
-        # TODO: use keras backend instead of tf.
         class_boxes = tf.boolean_mask(boxes, mask[:, c])
         class_box_scores = tf.boolean_mask(box_scores[:, c], mask[:, c])
         nms_index = tf.image.non_max_suppression(
