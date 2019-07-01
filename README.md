@@ -81,6 +81,9 @@ If you want to use original pretrained weights for YOLOv3:
     3. `python convert.py -w darknet53.cfg darknet53.weights model_data/darknet53_weights.h5`  
     4. use model_data/darknet53_weights.h5 in train.py
 
+```sh
+python3 train.py --model model_data/yolo_weights.h5 --classes model_data/voc_classes.txt --anchors model_data/yolo_anchors.txt
+```
 ---
 
 ## Some issues to know

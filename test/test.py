@@ -1,11 +1,12 @@
 from tensorflow.python import keras
 from tensorflow.python.keras.callbacks import TensorBoard
 import tensorflow.python as tf
-from train import create_model, get_anchors, get_classes
+from train import create_model, get_anchors, get_classes, create_dataset
 from tensorflow import py_function
 from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
 from yolo3.utils import get_random_data
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def test_model_graph():
@@ -215,3 +216,55 @@ def test_zip_dataset():
 #         return [image_data, *y_true], np.zeros(self.batch_size)
 #     def on_epoch_end(self):
 #         np.random.shuffle(self.annotation_lines)
+
+
+def test_dataset():
+    classes_path = 'model_data/voc_classes.txt'
+    anchors_path = 'model_data/tiny_yolo_anchors.txt'
+    class_names = get_classes(classes_path)
+    num_classes = len(class_names)
+    anchors = get_anchors(anchors_path)
+    input_shape = (416, 416)  # multiple of 32, hw
+    batch_size = 1
+    annotation_path = 'train.txt'
+    with open(annotation_path) as f:
+        lines = f.readlines()
+
+    tset = create_dataset(lines[:2000], batch_size, input_shape, anchors, num_classes, False)
+    ter = iter(tset)
+
+    for i in range(3):
+        a, b = next(ter)
+        img, lb1, lb2 = a[0][0], a[1][0], a[2][0]
+        plt.imshow(img.numpy())
+        plt.show()
+
+    true_confidence = lb1[..., 4:5]
+
+    obj_mask = true_confidence[..., 0] > .7
+
+    tf.boolean_mask(lb1, obj_mask)
+
+    # NOTE 他就是按比例缩小图像的。
+    np.min(a[0][0])
+    np.max(a[0][0])
+
+
+def test_get_random_data():
+    classes_path = 'model_data/voc_classes.txt'
+    anchors_path = 'model_data/tiny_yolo_anchors.txt'
+    class_names = get_classes(classes_path)
+    num_classes = len(class_names)
+    anchors = get_anchors(anchors_path)
+    input_shape = (416, 416)  # multiple of 32, hw
+    batch_size = 1
+    annotation_path = 'train.txt'
+    with open(annotation_path) as f:
+        lines = f.readlines()
+
+    img, box = get_random_data(lines[0], input_shape, False)
+    box = box[np.newaxis, :2, :]
+
+    a, b = preprocess_true_boxes(box, input_shape, anchors, num_classes, is_print=True)
+
+    a[np.where(a[..., 4] > 0)]

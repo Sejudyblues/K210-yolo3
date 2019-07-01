@@ -10,7 +10,6 @@ from tensorflow.python.keras.layers.advanced_activations import LeakyReLU
 from tensorflow.python.keras.layers.normalization import BatchNormalization
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras.regularizers import l2
-
 from yolo3.utils import compose
 
 
@@ -229,7 +228,7 @@ def yolo_eval(yolo_outputs,
     return boxes_, scores_, classes_
 
 
-def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
+def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_print=False) -> list:
     '''Preprocess true boxes to training input format
 
     Parameters
@@ -251,10 +250,16 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
 
     true_boxes = np.array(true_boxes, dtype='float32')
     input_shape = np.array(input_shape, dtype='int32')
+    # NOTE 把 xyxy转换成xywh
     boxes_xy = (true_boxes[..., 0:2] + true_boxes[..., 2:4]) // 2
     boxes_wh = true_boxes[..., 2:4] - true_boxes[..., 0:2]
+    # NOTE 再除以图像大小 缩小至 0-1
     true_boxes[..., 0:2] = boxes_xy / input_shape[::-1]
     true_boxes[..., 2:4] = boxes_wh / input_shape[::-1]
+    if is_print:
+        print('boxes_xy', boxes_xy)
+        print('boxes_wh', boxes_wh)
+        print('true_boxes', true_boxes)
 
     m = true_boxes.shape[0]
     grid_shapes = [input_shape // {0: 32, 1: 16, 2: 8}[l] for l in range(num_layers)]
@@ -267,6 +272,10 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
     anchor_mins = -anchor_maxes
     valid_mask = boxes_wh[..., 0] > 0
 
+    if is_print:
+        print('anchor_maxes', anchor_maxes)
+        print('anchor_mins', anchor_mins)
+
     for b in range(m):
         # Discard zero rows.
         wh = boxes_wh[b, valid_mask[b]]
@@ -276,6 +285,10 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
         wh = np.expand_dims(wh, -2)
         box_maxes = wh / 2.
         box_mins = -box_maxes
+
+        if is_print:
+            print('box_maxes', box_maxes)
+            print('box_mins', box_mins)
 
         intersect_mins = np.maximum(box_mins, anchor_mins)
         intersect_maxes = np.minimum(box_maxes, anchor_maxes)
@@ -293,6 +306,11 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
                 if n in anchor_mask[l]:
                     i = np.floor(true_boxes[b, t, 0] * grid_shapes[l][1]).astype('int32')
                     j = np.floor(true_boxes[b, t, 1] * grid_shapes[l][0]).astype('int32')
+
+                    if is_print:
+                        print(true_boxes[b, t, 0] * grid_shapes[l][1])
+                        print(true_boxes[b, t, 1] * grid_shapes[l][0])
+
                     k = anchor_mask[l].index(n)
                     c = true_boxes[b, t, 4].astype('int32')
                     y_true[l][b, j, i, k, 0:4] = true_boxes[b, t, 0:4]
@@ -368,7 +386,8 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
     loss = 0
     m = K.shape(yolo_outputs[0])[0]  # batch size, tensor
     mf = K.cast(m, K.dtype(yolo_outputs[0]))
-
+    # if print_loss:
+    #     mf = tf.Print(mf, [mf], message='mf: ')
     for l in range(num_layers):
         object_mask = y_true[l][..., 4:5]
         true_class_probs = y_true[l][..., 5:]

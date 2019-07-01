@@ -4,9 +4,10 @@ Retrain the YOLO model for your own dataset.
 
 import numpy as np
 import tensorflow.python as tf
+from tensorflow.contrib.data import assert_element_shape
 import tensorflow.python.keras.backend as K
 from tensorflow.python.keras.layers import Input, Lambda
-from tensorflow.python.keras.models import Model, load_model
+from tensorflow.python.keras.models import Model, load_model, save_model
 from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 from tensorflow.python.keras.utils import Sequence
@@ -15,6 +16,9 @@ from yolo3.utils import get_random_data
 from tensorflow import py_function
 from pathlib import Path
 from datetime import datetime
+from keras_mobilenet import MobileNet
+from yolo3.model import compose, DarknetConv2D, DarknetConv2D_BN_Leaky, UpSampling2D, Concatenate
+
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 K.set_session(tf.Session(config=config))
@@ -112,6 +116,62 @@ def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, w
         #     print('Freeze the first {} layers of total {} layers.'.format(num, len(model_body.layers)))
 
     model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
+                        arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.7, 'print_loss': True})(
+        [*model_body.output, *y_true])
+    model = Model([model_body.input, *y_true], model_loss)
+
+    return model
+
+
+def create_mobile_yolo(input_shape, anchors, num_classes, load_pretrained=True, weights_path=None):
+    '''create the training model, for mobilenetv1 YOLOv3'''
+    K.clear_session()  # get a new session
+    h, w = input_shape
+    image_input = Input(shape=(h, w, 3))
+    num_anchors = len(anchors)
+
+    y_true = [Input(shape=(h // {0: 32, 1: 16}[l], w // {0: 32, 1: 16}[l],
+                           num_anchors // 2, num_classes + 5)) for l in range(2)]
+
+    base_model = MobileNet(input_tensor=image_input, input_shape=input_shape, include_top=False, weights=None)  # type: keras.Model
+    base_model.load_weights('model_data/mobilenet_v1_base.h5')
+
+    for layer in base_model.layers:
+        layer.trainable = True
+
+    x1 = base_model.get_layer('conv_pw_11_relu').output
+
+    x2 = base_model.output
+
+    y1 = compose(
+        DarknetConv2D_BN_Leaky(128, (3, 3)),
+        DarknetConv2D(num_anchors // 2 * (num_classes + 5), (1, 1)))(x2)
+
+    x2 = compose(
+        DarknetConv2D_BN_Leaky(128, (1, 1)),
+        UpSampling2D(2))(x2)
+
+    y2 = compose(
+        Concatenate(),
+        DarknetConv2D_BN_Leaky(128, (3, 3)),
+        DarknetConv2D(num_anchors // 2 * (num_classes + 5), (1, 1)))([x2, x1])
+
+    model_body = Model(image_input, [y1, y2])
+
+    print('Create Mobilenet YOLOv3 model with {} anchors and {} classes.'.format(num_anchors, num_classes))
+
+    if isinstance(load_pretrained, str):
+        model_body.load_weights(weights_path)
+        print('Load weights {}.'.format(weights_path))
+        # freeze_body = 2
+        # if freeze_body in [1, 2]:
+        #     # Freeze the darknet body or freeze all but 2 output layers.
+        #     num = (20, len(model_body.layers) - 2)[freeze_body - 1]
+        #     for i in range(num):
+        #         model_body.layers[i].trainable = False
+        #     print('Freeze the first {} layers of total {} layers.'.format(num, len(model_body.layers)))
+
+    model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
                         arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.7})(
         [*model_body.output, *y_true])
     model = Model([model_body.input, *y_true], model_loss)
@@ -120,7 +180,7 @@ def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, w
 
 
 def create_dataset(annotation_lines: np.ndarray, batch_size: int,
-                   input_shape: list, anchors: np.ndarray, num_classes: int) -> tf.data.Dataset:
+                   input_shape: list, anchors: np.ndarray, num_classes: int, random=True) -> tf.data.Dataset:
     num = len(annotation_lines)
     if num == 0 or batch_size <= 0:
         raise ValueError
@@ -129,7 +189,7 @@ def create_dataset(annotation_lines: np.ndarray, batch_size: int,
         image_data = []
         box_data = []
         for line in lines:
-            image, box = get_random_data(line.numpy().decode(), input_shape, random=True)
+            image, box = get_random_data(line.numpy().decode(), input_shape, random=random)
             image_data.append(image)
             box_data.append(box)
 
@@ -187,19 +247,18 @@ if __name__ == '__main__':
     log_dir = Path('logs')
     log_dir = log_dir / datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
     classes_path = 'model_data/voc_classes.txt'
-    anchors_path = 'model_data/yolo_anchors.txt'
+    anchors_path = 'model_data/tiny_yolo_anchors.txt'
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
     anchors = get_anchors(anchors_path)
 
-    input_shape = (416, 416)  # multiple of 32, hw
-    batch_size = 1
+    input_shape = (224, 320)  # multiple of 32, hw
+    batch_size = 16
 
-    is_tiny_version = len(anchors) == 6  # default setting
-    if is_tiny_version:
-        model = create_tiny_model(input_shape, anchors, num_classes, weights_path='model_data/tiny_yolo_weights.h5')
-    else:
-        model = create_model(input_shape, anchors, num_classes, weights_path='model_data/yolo_weights.h5')  # make sure you know what you freeze
+    """ Set the Model """
+    # model = create_tiny_model(input_shape, anchors, num_classes, weights_path='model_data/tiny_yolo_weights.h5')
+    # model = create_model(input_shape, anchors, num_classes, weights_path='model_data/yolo_weights.h5')  # make sure you know what you freeze
+    model = create_mobile_yolo(input_shape, anchors, num_classes)  # make sure you know what you freeze
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(str(log_dir) + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -223,15 +282,28 @@ if __name__ == '__main__':
 
     print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
     train_set = create_dataset(lines[:num_train], batch_size, input_shape, anchors, num_classes)
+    vail_set = create_dataset(lines[num_train:], batch_size, input_shape, anchors, num_classes)
 
-    model.fit(train_set,
-              epochs=20,
-              steps_per_epoch=max(1, num_train // batch_size),
-              callbacks=[logging, checkpoint])
+    shapes = (tuple([ins.shape for ins in model.input]), tuple(tf.TensorShape([batch_size, ])))
+
+    train_set = train_set.apply(assert_element_shape(shapes))
+    vail_set = vail_set.apply(assert_element_shape(shapes))
+
+    try:
+        model.fit(train_set,
+                  epochs=10,
+                  validation_data=vail_set, validation_steps=40,
+                  steps_per_epoch=max(1, num_train // batch_size),
+                  callbacks=[logging, checkpoint],
+                  verbose=1)
+    except KeyboardInterrupt:
+        pass
+
     # train_set = YOLOSequence(lines[:num_train], batch_size, input_shape, anchors, num_classes)
     # model.fit_generator(train_set,
     #                     epochs=20,
     #                     steps_per_epoch=max(1, num_train // batch_size),
     #                     callbacks=[logging, checkpoint],
     #                     use_multiprocessing=True)
-    model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+    # model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+    save_model(model, str(log_dir / 'yolo_model.h5'))
