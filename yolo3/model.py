@@ -10,6 +10,7 @@ from tensorflow.python.keras.layers.advanced_activations import LeakyReLU
 from tensorflow.python.keras.layers.normalization import BatchNormalization
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras.regularizers import l2
+from keras_mobilenet import MobileNet
 from yolo3.utils import compose
 
 
@@ -119,6 +120,33 @@ def tiny_yolo_body(inputs, num_anchors, num_classes):
     return Model(inputs, [y1, y2])
 
 
+def mobile_yolo_body(inputs, num_anchors, num_classes) -> Model:
+    base_model = MobileNet(input_tensor=inputs)  # type: keras.Model
+    base_model.load_weights('model_data/mobilenet_v1_base.h5')
+
+    for layer in base_model.layers:
+        layer.trainable = True
+
+    x1 = base_model.get_layer('conv_pw_11_relu').output
+
+    x2 = base_model.output
+
+    y1 = compose(
+        DarknetConv2D_BN_Leaky(128, (3, 3)),
+        DarknetConv2D(num_anchors * (num_classes + 5), (1, 1)))(x2)
+
+    x2 = compose(
+        DarknetConv2D_BN_Leaky(128, (1, 1)),
+        UpSampling2D(2))(x2)
+
+    y2 = compose(
+        Concatenate(),
+        DarknetConv2D_BN_Leaky(128, (3, 3)),
+        DarknetConv2D(num_anchors * (num_classes + 5), (1, 1)))([x2, x1])
+
+    return Model(inputs, [y1, y2])
+
+
 def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     """Convert final layer features to bounding box parameters."""
     num_anchors = len(anchors)
@@ -126,17 +154,16 @@ def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     anchors_tensor = K.reshape(K.constant(anchors), [1, 1, 1, num_anchors, 2])
 
     grid_shape = K.shape(feats)[1:3]  # height, width
-    grid_y = K.tile(K.reshape(K.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
-                    [1, grid_shape[1], 1, 1])
-    grid_x = K.tile(K.reshape(K.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
-                    [grid_shape[0], 1, 1, 1])
+    grid_y = K.tile(K.reshape(K.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]), [1, grid_shape[1], 1, 1])
+    grid_x = K.tile(K.reshape(K.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]), [grid_shape[0], 1, 1, 1])
     grid = K.concatenate([grid_x, grid_y])
-    grid = K.cast(grid, K.dtype(feats))
+    grid = K.cast(grid, K.dtype(feats))  # NOTE gird 就是 xy offset,不过他的数据都是整数 [0,1] [0,2] [0,3]
 
     feats = K.reshape(
         feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5])
 
     # Adjust preditions to each spatial grid point and anchor size.
+    # 直接把pred_xy pred_wh转换至全局范围的【0-1】
     box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[::-1], K.dtype(feats))
     box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[::-1], K.dtype(feats))
     box_confidence = K.sigmoid(feats[..., 4:5])
@@ -250,15 +277,13 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
 
     true_boxes = np.array(true_boxes, dtype='float32')
     input_shape = np.array(input_shape, dtype='int32')
-    # NOTE 把 xyxy转换成xywh
+    # NOTE 把 xyxy转换成xywh 原来是像素为单位，boxes_xy还是以像素为单位
     boxes_xy = (true_boxes[..., 0:2] + true_boxes[..., 2:4]) // 2
     boxes_wh = true_boxes[..., 2:4] - true_boxes[..., 0:2]
-    # NOTE 再除以图像大小 缩小至 0-1
+    # NOTE 再除以图像大小 缩小至全局范围的0-1
     true_boxes[..., 0:2] = boxes_xy / input_shape[::-1]
     true_boxes[..., 2:4] = boxes_wh / input_shape[::-1]
     if is_print:
-        print('boxes_xy', boxes_xy)
-        print('boxes_wh', boxes_wh)
         print('true_boxes', true_boxes)
 
     m = true_boxes.shape[0]
@@ -272,9 +297,9 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
     anchor_mins = -anchor_maxes
     valid_mask = boxes_wh[..., 0] > 0
 
-    if is_print:
-        print('anchor_maxes', anchor_maxes)
-        print('anchor_mins', anchor_mins)
+    # if is_print:
+    #     print('anchor_maxes', anchor_maxes)
+    #     print('anchor_mins', anchor_mins)
 
     for b in range(m):
         # Discard zero rows.
@@ -286,9 +311,9 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
         box_maxes = wh / 2.
         box_mins = -box_maxes
 
-        if is_print:
-            print('box_maxes', box_maxes)
-            print('box_mins', box_mins)
+        # if is_print:
+        #     print('box_maxes', box_maxes)
+        #     print('box_mins', box_mins)
 
         intersect_mins = np.maximum(box_mins, anchor_mins)
         intersect_maxes = np.minimum(box_maxes, anchor_maxes)
@@ -304,16 +329,22 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
         for t, n in enumerate(best_anchor):
             for l in range(num_layers):
                 if n in anchor_mask[l]:
+                    # NOTE true_box 的位置直接就是[0-1]*grid_wh
                     i = np.floor(true_boxes[b, t, 0] * grid_shapes[l][1]).astype('int32')
                     j = np.floor(true_boxes[b, t, 1] * grid_shapes[l][0]).astype('int32')
 
-                    if is_print:
-                        print(true_boxes[b, t, 0] * grid_shapes[l][1])
-                        print(true_boxes[b, t, 1] * grid_shapes[l][0])
+                    # if is_print:
+                    #     print(true_boxes[b, t, 0] * grid_shapes[l][1])
+                    #     print(true_boxes[b, t, 1] * grid_shapes[l][0])
 
                     k = anchor_mask[l].index(n)
                     c = true_boxes[b, t, 4].astype('int32')
+                    # ! y true 的xywh最终绝对是对应全局的【0-1】，但是为什么在yolo loss里又好像是gird scale？
                     y_true[l][b, j, i, k, 0:4] = true_boxes[b, t, 0:4]
+                    if is_print:
+                        print('true_boxes', true_boxes)
+                        print('y_true', y_true[l][b, j, i, k, 0:4])
+
                     y_true[l][b, j, i, k, 4] = 1
                     y_true[l][b, j, i, k, 5 + c] = 1
 
@@ -387,25 +418,51 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
     m = K.shape(yolo_outputs[0])[0]  # batch size, tensor
     mf = K.cast(m, K.dtype(yolo_outputs[0]))
     # if print_loss:
-    #     mf = tf.Print(mf, [mf], message='mf: ')
+    # grid_shapes = tf.Print(grid_shapes, [grid_shapes], message='grid_shapes: ')
+    # y_true = tf.Print(y_true, [y_true], message='y_true: ')
+
     for l in range(num_layers):
         object_mask = y_true[l][..., 4:5]
-        true_class_probs = y_true[l][..., 5:]
 
+        true_class_probs = y_true[l][..., 5:]
+        """ grid 是 [[0,0],[1,0],[2,0],...
+                       [0,1],[1,1],[2,1],... 
+                       [0,2],[1,2],[2,2],... ] 
+            grid_shapes= [[7,10],[14,20]]               
+        """
+        # NOTE 这里的pred_xy, pred_wh是用来计算ignore mask的，
         grid, raw_pred, pred_xy, pred_wh = yolo_head(yolo_outputs[l],
                                                      anchors[anchor_mask[l]], num_classes, input_shape, calc_loss=True)
+        if print_loss:
+            # grid = tf.Print(grid, [grid], message='grid: ', summarize=50)
+            grid_shapes = tf.Print(grid_shapes, [grid_shapes], message='grid_shapes: ', summarize=50)
+
+            # K.print_tensor(grid, message='grid: ')
+
         pred_box = K.concatenate([pred_xy, pred_wh])
 
         # Darknet raw box to calculate loss.
-        raw_true_xy = y_true[l][..., :2] * grid_shapes[l][::-1] - grid
-        raw_true_wh = K.log(y_true[l][..., 2:4] / anchors[anchor_mask[l]] * input_shape[::-1])
+        # 这里也是吧 true xy wh 都转换到全局
+        y_true_xy = y_true[l][..., :2]
+        y_true_wh = y_true[l][..., 2:4]
+
+        # if print_loss:
+        #     y_true_xy = tf.Print(y_true_xy, [y_true_xy], message='y_true_xy: ')
+        #     y_true_wh = tf.Print(y_true_wh, [y_true_wh], message='y_true_wh: ')
+
+        # NOTE 【0-1】乘上grid 的wh 得到 【0-7】 和 【0-10】之间的值，然后减去gird，得到相对grid的【0-1】之间的值
+        raw_true_xy = y_true_xy * grid_shapes[l][::-1] - grid
+        # NOTE 【0-1】之间先转换成全局，再除anchor，再log。就是原始yolo wh预测的值
+        raw_true_wh = K.log(y_true_wh / anchors[anchor_mask[l]] * input_shape[::-1])
         raw_true_wh = K.switch(object_mask, raw_true_wh, K.zeros_like(raw_true_wh))  # avoid log(0)=-inf
+        # 这个box_loss_scale是 全局的【0-1】wh乘积
         box_loss_scale = 2 - y_true[l][..., 2:3] * y_true[l][..., 3:4]
 
         # Find ignore mask, iterate over each of batch.
         ignore_mask = tf.TensorArray(K.dtype(y_true[0]), size=1, dynamic_size=True)
         object_mask_bool = K.cast(object_mask, 'bool')
-
+        
+        # 这里计算
         def loop_body(b, ignore_mask):
             true_box = tf.boolean_mask(y_true[l][b, ..., 0:4], object_mask_bool[b, ..., 0])
             iou = box_iou(pred_box[b], true_box)
@@ -417,6 +474,7 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
         ignore_mask = K.expand_dims(ignore_mask, -1)
 
         # K.binary_crossentropy is helpful to avoid exp overflow.
+        # NOTE 这个的raw的意思就是原始yolo所输出的内容
         xy_loss = object_mask * box_loss_scale * K.binary_crossentropy(raw_true_xy, raw_pred[..., 0:2], from_logits=True)
         wh_loss = object_mask * box_loss_scale * 0.5 * K.square(raw_true_wh - raw_pred[..., 2:4])
         confidence_loss = object_mask * K.binary_crossentropy(object_mask, raw_pred[..., 4:5], from_logits=True) + \
@@ -428,6 +486,6 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
         confidence_loss = K.sum(confidence_loss) / mf
         class_loss = K.sum(class_loss) / mf
         loss += xy_loss + wh_loss + confidence_loss + class_loss
-        if print_loss:
-            loss = tf.Print(loss, [loss, xy_loss, wh_loss, confidence_loss, class_loss, K.sum(ignore_mask)], message='loss: ')
+        # if print_loss:
+        #     loss = tf.Print(loss, [loss, xy_loss, wh_loss, confidence_loss, class_loss, K.sum(ignore_mask)], message='loss: ')
     return loss

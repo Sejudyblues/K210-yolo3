@@ -86,6 +86,14 @@ python3 train.py --model model_data/yolo_weights.h5 --classes model_data/voc_cla
 ```
 ---
 
+
+## Test
+
+```sh
+python3 yolo_video.py --model logs/20190701-110820/yolo_model.h5 --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
+```
+Then type the image path.
+
 ## Some issues to know
 
 1. The test environment is
@@ -104,3 +112,5 @@ python3 train.py --model model_data/yolo_weights.h5 --classes model_data/voc_cla
 6. The training strategy is for reference only. Adjust it according to your dataset and your goal. And add further strategy if needed.
 
 7. For speeding up the training process with frozen layers train_bottleneck.py can be used. It will compute the bottleneck features of the frozen model first and then only trains the last layers. This makes training on CPU possible in a reasonable time. See [this](https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html) for more information on bottleneck features.
+
+

@@ -13,10 +13,15 @@ from tensorflow.python.keras.models import load_model
 from tensorflow.python.keras.layers import Input
 from PIL import Image, ImageFont, ImageDraw
 
-from yolo3.model import yolo_eval, yolo_body, tiny_yolo_body
+from yolo3.model import yolo_eval, yolo_body, tiny_yolo_body, mobile_yolo_body
 from yolo3.utils import letterbox_image
 import os
 from tensorflow.python.keras.utils import multi_gpu_model
+import tensorflow.python as tf
+
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+K.set_session(tf.Session(config=config))
 
 
 class YOLO(object):
@@ -24,9 +29,9 @@ class YOLO(object):
         "model_path": 'model_data/yolo.h5',
         "anchors_path": 'model_data/yolo_anchors.txt',
         "classes_path": 'model_data/coco_classes.txt',
-        "score": 0.3,
-        "iou": 0.45,
-        "model_image_size": (416, 416),
+        "score": 0.7,
+        "iou": 0.5,
+        "model_image_size": (224, 320),
         "gpu_num": 1,
     }
 
@@ -70,7 +75,7 @@ class YOLO(object):
         try:
             self.yolo_model = load_model(model_path, compile=False)
         except:
-            self.yolo_model = tiny_yolo_body(Input(shape=(None, None, 3)), num_anchors // 2, num_classes) \
+            self.yolo_model = mobile_yolo_body(Input(shape=(None, None, 3)), num_anchors // 2, num_classes) \
                 if is_tiny_version else yolo_body(Input(shape=(None, None, 3)), num_anchors // 3, num_classes)
             self.yolo_model.load_weights(self.model_path)  # make sure model, anchors and classes match
         else:

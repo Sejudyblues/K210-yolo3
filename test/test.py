@@ -7,6 +7,7 @@ from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_l
 from yolo3.utils import get_random_data
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 
 
 def test_model_graph():
@@ -250,6 +251,15 @@ def test_dataset():
     np.max(a[0][0])
 
 
+def center_to_corner(true_box: np.ndarray) -> np.ndarray:
+    x1 = (true_box[:, 0:1] - true_box[:, 2:3] / 2)
+    y1 = (true_box[:, 1:2] - true_box[:, 3:4] / 2)
+    x2 = (true_box[:, 0:1] + true_box[:, 2:3] / 2)
+    y2 = (true_box[:, 1:2] + true_box[:, 3:4] / 2)
+    xyxy_box = np.hstack([x1, y1, x2, y2])
+    return xyxy_box
+
+
 def test_get_random_data():
     classes_path = 'model_data/voc_classes.txt'
     anchors_path = 'model_data/tiny_yolo_anchors.txt'
@@ -262,9 +272,24 @@ def test_get_random_data():
     with open(annotation_path) as f:
         lines = f.readlines()
 
-    img, box = get_random_data(lines[0], input_shape, False)
-    box = box[np.newaxis, :2, :]
+    for i in range(10):
+        img, box = get_random_data(lines[i], input_shape, False)
+        box = box[np.newaxis, :2, :]
 
-    a, b = preprocess_true_boxes(box, input_shape, anchors, num_classes, is_print=True)
+        y_true = preprocess_true_boxes(box, input_shape, anchors, num_classes, is_print=True)
 
-    a[np.where(a[..., 4] > 0)]
+        for a in y_true:
+            true_box = a[np.where(a[..., 4] > 0)]
+            true_box[:, :2] *= input_shape[::-1]
+            true_box[:, 2:4] *= input_shape[::-1]
+
+            xyxy_box = center_to_corner(true_box)
+            print(xyxy_box)
+            for b in xyxy_box:
+                cv2.rectangle(img, tuple(b[:2].astype(int)), tuple(b[2:4].astype(int)), (255, 0, 0))
+
+        plt.imshow(img)
+        plt.show()
+        # !  经过测试 y true 的xywh最终绝对是对应全局的【0-1】
+        # ! 但是为什么在yolo loss里又好像是gird scale？
+

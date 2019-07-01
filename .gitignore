@@ -108,3 +108,4 @@ ENV/
 .mypy_cache/
 train.txt
 .vscode
+test_logs

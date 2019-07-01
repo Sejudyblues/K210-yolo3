@@ -140,7 +140,7 @@ def create_mobile_yolo(input_shape, anchors, num_classes, load_pretrained=True, 
         print('Load weights {}.'.format(weights_path))
 
     model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
-                        arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.7})(
+                        arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.7, 'print_loss': True})(
         [*model_body.output, *y_true])
     model = Model([model_body.input, *y_true], model_loss)
 
@@ -212,7 +212,7 @@ class YOLOSequence(Sequence):
 
 if __name__ == '__main__':
     annotation_path = 'train.txt'
-    log_dir = Path('logs')
+    log_dir = Path('test_logs')
     log_dir = log_dir / datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
     classes_path = 'model_data/voc_classes.txt'
     anchors_path = 'model_data/tiny_yolo_anchors.txt'
@@ -263,7 +263,7 @@ if __name__ == '__main__':
                   validation_data=vail_set, validation_steps=40,
                   steps_per_epoch=max(1, num_train // batch_size),
                   callbacks=[logging, checkpoint],
-                  verbose=1)
+                  verbose=0)
     except KeyboardInterrupt:
         pass
 
