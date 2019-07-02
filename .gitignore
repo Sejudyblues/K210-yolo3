@@ -109,3 +109,5 @@ ENV/
 train.txt
 .vscode
 test_logs
+*.kmodel
+*.tflite

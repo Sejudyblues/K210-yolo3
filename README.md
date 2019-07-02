@@ -94,6 +94,20 @@ python3 yolo_video.py --model logs/20190702-104259/yolo_model_body.h5 --anchors 
 ```
 Then type the image path.
 
+
+## Freeze
+
+```sh
+python3 freeze.py --model logs/20190702-104259/yolo_model_body.h5
+```
+Will create mobile_yolo.tflite
+
+## Convert
+
+```sh
+ncc -i tflite -o k210model --channelwise-output --dataset ./images mobile_yolo.tflite ./yolo.kmodel
+```
+
 ## Some issues to know
 
 1. The test environment is
