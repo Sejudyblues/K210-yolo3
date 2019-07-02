@@ -86,21 +86,40 @@ python3 train.py --model model_data/yolo_weights.h5 --classes model_data/voc_cla
 ```
 ---
 
+## Train Mobilenet 
+
+```sh
+usage: train.py [-h] [--alpha {0.5,1.0}] [--annotation_path ANNOTATION_PATH]
+                [--classes_path CLASSES_PATH] [--anchors_path ANCHORS_PATH]
+```
+
+1.  train mobilenet alpha = 1.
+
+    ```sh
+    python3 train.py
+    ```
+
+2.  train mobilenet alpha = .5
+    
+    ```sh
+    python3 train.py --alpha .5
+    ```
 
 ## Test
 
 ```sh
-python3 yolo_video.py --model logs/20190702-104259/yolo_model_body.h5 --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
+python3 yolo_video.py --model logs/20190702-104259/yolo_model_body.h5 --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --alpha 1.0 --image
 ```
+
 Then type the image path.
 
 
 ## Freeze
 
 ```sh
-python3 freeze.py --model logs/20190702-104259/yolo_model_body.h5
+toco --output_file yolo_model.tflite --keras_model_file logs/20190702-194157/yolo_model_body.h5
 ```
-Will create mobile_yolo.tflite
+
 
 ## Convert
 

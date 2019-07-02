@@ -60,9 +60,9 @@ import warnings
 # from .imagenet_utils import _obtain_input_shape
 # from tensorflow.python.keras.applications import keras_modules_injection
 import tensorflow.python as tf
-from tensorflow.python.keras import layers
-from tensorflow.python.keras import backend
-from tensorflow.python.keras import models
+from tensorflow.python.keras import layers, backend, models
+from tensorflow.python.keras import utils as keras_utils
+
 BASE_WEIGHT_PATH = ('https://github.com/fchollet/deep-learning-models/'
                     'releases/download/v0.6/')
 
@@ -214,7 +214,7 @@ def MobileNet(input_shape=None,
 
     img_input = input_tensor
     x = _conv_block(img_input, 32, alpha, strides=(2, 2))
-    x = _depthwise_conv_block(x, 40, alpha, depth_multiplier, block_id=1)
+    x = _depthwise_conv_block(x, 40 if alpha == 1. else 64, alpha, depth_multiplier, block_id=1)
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, strides=(2, 2), block_id=2)
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3)
     x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, strides=(2, 2), block_id=4)
@@ -258,7 +258,7 @@ def MobileNet(input_shape=None,
     # Create model.
     model = models.Model(img_input, x, name='mobilenet_v1')
 
-    # # Load weights.
+    # Load weights.
     # if weights == 'imagenet':
     #     if alpha == 1.0:
     #         alpha_text = '1_0'

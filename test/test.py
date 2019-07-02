@@ -3,7 +3,7 @@ from tensorflow.python.keras.callbacks import TensorBoard
 import tensorflow.python as tf
 from train import create_model, get_anchors, get_classes, create_dataset
 from tensorflow import py_function
-from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
+from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss, mobile_yolo_body
 from yolo3.utils import get_random_data
 import numpy as np
 import matplotlib.pyplot as plt
@@ -293,3 +293,10 @@ def test_get_random_data():
         # !  经过测试 y true 的xywh最终绝对是对应全局的【0-1】
         # ! 但是为什么在yolo loss里又好像是gird scale？
 
+
+def test_mobile_yolo_05():
+    model = keras.applications.MobileNet(input_shape=(224, 320, 3),
+                                         alpha=.5,
+                                         include_top=False,
+                                         weights='imagenet')
+    model.summary()

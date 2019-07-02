@@ -120,9 +120,12 @@ def tiny_yolo_body(inputs, num_anchors, num_classes):
     return Model(inputs, [y1, y2])
 
 
-def mobile_yolo_body(inputs, num_anchors, num_classes) -> Model:
-    base_model = MobileNet(input_tensor=inputs)  # type: keras.Model
-    base_model.load_weights('model_data/mobilenet_v1_base.h5')
+def mobile_yolo_body(inputs, num_anchors, num_classes, alpha=1.) -> Model:
+    base_model = MobileNet(input_tensor=inputs, alpha=alpha)  # type: keras.Model
+    if alpha == 1.:
+        base_model.load_weights('model_data/mobilenet_v1_base.h5')
+    elif alpha == .5:
+        base_model.load_weights('model_data/mobilenet_v1_base_05.h5')
 
     for layer in base_model.layers:
         layer.trainable = True
@@ -461,7 +464,7 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
         # Find ignore mask, iterate over each of batch.
         ignore_mask = tf.TensorArray(K.dtype(y_true[0]), size=1, dynamic_size=True)
         object_mask_bool = K.cast(object_mask, 'bool')
-        
+
         # 这里计算
         def loop_body(b, ignore_mask):
             true_box = tf.boolean_mask(y_true[l][b, ..., 0:4], object_mask_bool[b, ..., 0])

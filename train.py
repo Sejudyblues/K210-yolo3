@@ -17,6 +17,9 @@ from tensorflow import py_function
 from pathlib import Path
 from datetime import datetime
 from keras_mobilenet import MobileNet
+import argparse
+import sys
+
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -122,7 +125,7 @@ def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, w
     return model
 
 
-def create_mobile_yolo(input_shape, anchors, num_classes, load_pretrained=True, weights_path=None):
+def create_mobile_yolo(input_shape, anchors, num_classes, alpha=1., load_pretrained=True, weights_path=None):
     '''create the training model, for mobilenetv1 YOLOv3'''
     K.clear_session()  # get a new session
     h, w = input_shape
@@ -132,7 +135,7 @@ def create_mobile_yolo(input_shape, anchors, num_classes, load_pretrained=True, 
     y_true = [Input(shape=(h // {0: 32, 1: 16}[l], w // {0: 32, 1: 16}[l],
                            num_anchors // 2, num_classes + 5)) for l in range(2)]
 
-    model_body = mobile_yolo_body(image_input, num_anchors // 2, num_classes)
+    model_body = mobile_yolo_body(image_input, num_anchors // 2, num_classes, alpha)
     print('Create Mobilenet YOLOv3 model with {} anchors and {} classes.'.format(num_anchors, num_classes))
 
     if isinstance(load_pretrained, str):
@@ -210,12 +213,12 @@ class YOLOSequence(Sequence):
         np.random.shuffle(self.annotation_lines)
 
 
-if __name__ == '__main__':
-    annotation_path = 'train.txt'
+def main(annotation_path, classes_path, anchors_path, alpha):
+    # annotation_path = 'train.txt'
+    # classes_path = 'model_data/voc_classes.txt'
+    # anchors_path = 'model_data/tiny_yolo_anchors.txt'
     log_dir = Path('logs')
     log_dir = log_dir / datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
-    classes_path = 'model_data/voc_classes.txt'
-    anchors_path = 'model_data/tiny_yolo_anchors.txt'
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
     anchors = get_anchors(anchors_path)
@@ -226,7 +229,7 @@ if __name__ == '__main__':
     """ Set the Model """
     # model = create_tiny_model(input_shape, anchors, num_classes, weights_path='model_data/tiny_yolo_weights.h5')
     # model = create_model(input_shape, anchors, num_classes, weights_path='model_data/yolo_weights.h5')  # make sure you know what you freeze
-    model, model_body = create_mobile_yolo(input_shape, anchors, num_classes)  # make sure you know what you freeze
+    model, model_body = create_mobile_yolo(input_shape, anchors, num_classes, alpha)  # make sure you know what you freeze
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(str(log_dir) + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -273,5 +276,15 @@ if __name__ == '__main__':
     #                     steps_per_epoch=max(1, num_train // batch_size),
     #                     callbacks=[logging, checkpoint],
     #                     use_multiprocessing=True)
-    model.save_weights(str(log_dir / 'yolo_model.h5'))
-    model.save_weights(str(log_dir / 'yolo_model_body.h5'))
+    save_model(model, str(log_dir / 'yolo_model.h5'))
+    save_model(model_body, str(log_dir / 'yolo_model_body.h5'))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--alpha', type=float, choices=[.5, 1.], help='mobilenet alpha', default=1.)
+    parser.add_argument('--annotation_path', type=str, help='annotation path', default='train.txt')
+    parser.add_argument('--classes_path', type=str, help='classes path', default='model_data/voc_classes.txt')
+    parser.add_argument('--anchors_path', type=str, help='anchors path', default='model_data/tiny_yolo_anchors.txt')
+    args = parser.parse_args(sys.argv[1:])
+    main(args.annotation_path, args.classes_path, args.anchors_path, args.alpha)

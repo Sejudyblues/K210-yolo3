@@ -33,6 +33,7 @@ class YOLO(object):
         "iou": 0.5,
         "model_image_size": (224, 320),
         "gpu_num": 1,
+        "alpha": 1.0,
     }
 
     @classmethod
@@ -75,7 +76,7 @@ class YOLO(object):
         try:
             self.yolo_model = load_model(model_path, compile=False)
         except:
-            self.yolo_model = mobile_yolo_body(Input(shape=(None, None, 3)), num_anchors // 2, num_classes)
+            self.yolo_model = mobile_yolo_body(Input(shape=(None, None, 3)), num_anchors // 2, num_classes, self.alpha)
             self.yolo_model.load_weights(self.model_path)  # make sure model, anchors and classes match
         else:
             assert self.yolo_model.layers[-1].output_shape[-1] == \
