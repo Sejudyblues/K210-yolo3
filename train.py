@@ -144,7 +144,7 @@ def create_mobile_yolo(input_shape, anchors, num_classes, load_pretrained=True, 
         [*model_body.output, *y_true])
     model = Model([model_body.input, *y_true], model_loss)
 
-    return model
+    return model, model_body
 
 
 def create_dataset(annotation_lines: np.ndarray, batch_size: int,
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     """ Set the Model """
     # model = create_tiny_model(input_shape, anchors, num_classes, weights_path='model_data/tiny_yolo_weights.h5')
     # model = create_model(input_shape, anchors, num_classes, weights_path='model_data/yolo_weights.h5')  # make sure you know what you freeze
-    model = create_mobile_yolo(input_shape, anchors, num_classes)  # make sure you know what you freeze
+    model, model_body = create_mobile_yolo(input_shape, anchors, num_classes)  # make sure you know what you freeze
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(str(log_dir) + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -273,5 +273,5 @@ if __name__ == '__main__':
     #                     steps_per_epoch=max(1, num_train // batch_size),
     #                     callbacks=[logging, checkpoint],
     #                     use_multiprocessing=True)
-    # model.save_weights(log_dir + 'trained_weights_stage_1.h5')
-    save_model(model, str(log_dir / 'yolo_model.h5'))
+    model.save_weights(str(log_dir / 'yolo_model.h5'))
+    model.save_weights(str(log_dir / 'yolo_model_body.h5'))

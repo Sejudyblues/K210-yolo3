@@ -90,7 +90,7 @@ python3 train.py --model model_data/yolo_weights.h5 --classes model_data/voc_cla
 ## Test
 
 ```sh
-python3 yolo_video.py --model logs/20190701-110820/yolo_model.h5 --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
+python3 yolo_video.py --model logs/20190702-104259/yolo_model_body.h5 --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
 ```
 Then type the image path.
 
