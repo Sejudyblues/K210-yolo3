@@ -436,11 +436,10 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
         # NOTE 这里的pred_xy, pred_wh是用来计算ignore mask的，
         grid, raw_pred, pred_xy, pred_wh = yolo_head(yolo_outputs[l],
                                                      anchors[anchor_mask[l]], num_classes, input_shape, calc_loss=True)
-        if print_loss:
-            # grid = tf.Print(grid, [grid], message='grid: ', summarize=50)
-            grid_shapes = tf.Print(grid_shapes, [grid_shapes], message='grid_shapes: ', summarize=50)
-
-            # K.print_tensor(grid, message='grid: ')
+        # if print_loss:
+        #     # grid = tf.Print(grid, [grid], message='grid: ', summarize=50)
+        #     # grid_shapes = tf.Print(grid_shapes, [grid_shapes], message='grid_shapes: ', summarize=50)
+        #     # K.print_tensor(grid, message='grid: ')
 
         pred_box = K.concatenate([pred_xy, pred_wh])
 

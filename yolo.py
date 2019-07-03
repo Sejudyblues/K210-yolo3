@@ -32,8 +32,7 @@ class YOLO(object):
         "score": 0.7,
         "iou": 0.5,
         "model_image_size": (224, 320),
-        "gpu_num": 1,
-        "alpha": 1.0,
+        "gpu_num": 1
     }
 
     @classmethod
@@ -73,15 +72,14 @@ class YOLO(object):
         num_anchors = len(self.anchors)
         num_classes = len(self.class_names)
         is_tiny_version = num_anchors == 6  # default setting
-        try:
-            self.yolo_model = load_model(model_path, compile=False)
-        except:
-            self.yolo_model = mobile_yolo_body(Input(shape=(None, None, 3)), num_anchors // 2, num_classes, self.alpha)
-            self.yolo_model.load_weights(self.model_path)  # make sure model, anchors and classes match
-        else:
-            assert self.yolo_model.layers[-1].output_shape[-1] == \
-                num_anchors / len(self.yolo_model.output) * (num_classes + 5), \
-                'Mismatch between model and given anchor and class sizes'
+        self.yolo_model = load_model(model_path, compile=False)
+        # except:
+        #     self.yolo_model = mobile_yolo_body(Input(shape=(None, None, 3)), num_anchors // 2, num_classes, self.alpha)
+        #     self.yolo_model.load_weights(self.model_path)  # make sure model, anchors and classes match
+        # else:
+        #     assert self.yolo_model.layers[-1].output_shape[-1] == \
+        #         num_anchors / len(self.yolo_model.output) * (num_classes + 5), \
+        #         'Mismatch between model and given anchor and class sizes'
 
         print('{} model, anchors, and classes loaded.'.format(self.model_path))
 

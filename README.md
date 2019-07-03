@@ -71,10 +71,18 @@ usage: train.py [-h] [--alpha {0.5,1.0}] [--annotation_path ANNOTATION_PATH]
 ## Test
 
 ```sh
-python3 yolo_video.py --model logs/xxxxxxxx/yolo_model_body.h5 --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --alpha 1.0 --image
+python3 yolo_video.py --model logs/xxxxxxxx/yolo_model_body.h5 --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
 ```
 
 Then type the image path.
+
+You can try with:
+
+```sh
+ython3 yolo_video.py --model model_data/yolo_model_body_05.h5  --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
+```
+
+Then type `model_data/people.jpg`
 
 
 ## Freeze

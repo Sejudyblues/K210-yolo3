@@ -47,10 +47,6 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--alpha', type=float, choices=[.5, 1.],
-        help='mobilenet alpha default ' + str(YOLO.get_defaults('alpha')), default=1.)
-
-    parser.add_argument(
         '--image', default=False, action="store_true",
         help='Image detection mode, will ignore all positional arguments'
     )

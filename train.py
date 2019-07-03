@@ -247,13 +247,13 @@ def main(annotation_path, classes_path, anchors_path, alpha):
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
 
-    model.compile(optimizer=Adam(lr=1e-3), loss={
+    model.compile(optimizer=Adam(lr=0.0005), loss={
         # use custom yolo_loss Lambda layer.
         'yolo_loss': lambda y_true, y_pred: y_pred})
 
     print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
     train_set = create_dataset(lines[:num_train], batch_size, input_shape, anchors, num_classes)
-    vail_set = create_dataset(lines[num_train:], batch_size, input_shape, anchors, num_classes)
+    vail_set = create_dataset(lines[num_train:], batch_size, input_shape, anchors, num_classes, random=False)
 
     shapes = (tuple([ins.shape for ins in model.input]), tuple(tf.TensorShape([batch_size, ])))
 
