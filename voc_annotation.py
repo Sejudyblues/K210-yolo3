@@ -11,7 +11,7 @@ classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat"
 
 
 def convert_annotation(root: Path, year, image_id, list_file):
-    in_file = open(f'{str(root)}/VOCdevkit/VOC{year}/Annotations/{image_id}.xml')
+    in_file = open(f'{str(root)}/VOC{year}/Annotations/{image_id}.xml')
     tree = ET.parse(in_file)
     root = tree.getroot()
 
@@ -28,10 +28,10 @@ def convert_annotation(root: Path, year, image_id, list_file):
 
 def main(root: Path):
     for year, image_set in sets:
-        image_ids = (root / f'VOCdevkit/VOC{year}/ImageSets/Main/{image_set}.txt').open().read().strip().split()
+        image_ids = (root / f'VOC{year}/ImageSets/Main/{image_set}.txt').open().read().strip().split()
         list_file = open('%s_%s.txt' % (year, image_set), 'w')
         for image_id in image_ids:
-            list_file.write(f'{str(root)}/VOCdevkit/VOC{year}/JPEGImages/{image_id}.jpg')
+            list_file.write(f'{str(root)}/VOC{year}/JPEGImages/{image_id}.jpg')
             convert_annotation(root, year, image_id, list_file)
             list_file.write('\n')
         list_file.close()
