@@ -50,7 +50,9 @@ See `requirements.txt`
 ## Train Mobilenet 
 
 ```sh
-usage: train.py [-h] [--alpha {0.5,1.0}] [--annotation_path ANNOTATION_PATH]
+usage: train.py [-h] [--alpha {0.5,0.75,1.0}]
+                [--annotation_path ANNOTATION_PATH]
+                [--weights_path WEIGHTS_PATH] [--learning_rate LEARNING_RATE]
                 [--classes_path CLASSES_PATH] [--anchors_path ANCHORS_PATH]
 ```
 
@@ -65,8 +67,14 @@ usage: train.py [-h] [--alpha {0.5,1.0}] [--annotation_path ANNOTATION_PATH]
     ```sh
     python3 train.py --alpha .5
     ```
+
+3. load pre-train model
+
+   ```sh
+   python3 train.py --weights_path logs/xxxx-xxxx/yolo_model_body.h5
+   ```
     
-**NOTE:** Default training 10 epochs, Due to limited time I did not add more options to control the training.
+**NOTE:** Default training 10 epochs, Due to limited time I did not add more options to control the training. 
 
 ## Test
 
@@ -79,7 +87,7 @@ Then type the image path.
 You can try with:
 
 ```sh
-ython3 yolo_video.py --model model_data/yolo_model_body_05.h5  --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
+python3 yolo_video.py --model model_data/yolo_model_body_1.h5  --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
 ```
 
 Then type `model_data/people.jpg`

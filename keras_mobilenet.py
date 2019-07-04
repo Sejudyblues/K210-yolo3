@@ -88,7 +88,7 @@ def MobileNet(input_shape=None,
               input_tensor=None,
               pooling=None,
               classes=1000,
-              **kwargs):
+              **kwargs) -> tf.keras.Model:
     """Instantiates the MobileNet architecture.
 
     # Arguments
@@ -225,8 +225,8 @@ def MobileNet(input_shape=None,
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9)
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10)
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11)
-    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, strides=(2, 2), block_id=12)
-    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13)
+    x = _depthwise_conv_block(x, 896, alpha, depth_multiplier, strides=(2, 2), block_id=12)
+    x = _depthwise_conv_block(x, 896, alpha, depth_multiplier, block_id=13)
 
     # if include_top:
     #     if backend.image_data_format() == 'channels_first':

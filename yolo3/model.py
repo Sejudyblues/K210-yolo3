@@ -123,9 +123,11 @@ def tiny_yolo_body(inputs, num_anchors, num_classes):
 def mobile_yolo_body(inputs, num_anchors, num_classes, alpha=1.) -> Model:
     base_model = MobileNet(input_tensor=inputs, alpha=alpha)  # type: keras.Model
     if alpha == 1.:
-        base_model.load_weights('model_data/mobilenet_v1_base.h5')
+        base_model.load_weights('model_data/mobilenet_v1_base_10.h5')
+    elif alpha == .75:
+        base_model.load_weights('model_data/mobilenet_v1_base_7.h5')
     elif alpha == .5:
-        base_model.load_weights('model_data/mobilenet_v1_base_05.h5')
+        base_model.load_weights('model_data/mobilenet_v1_base_5.h5')
 
     for layer in base_model.layers:
         layer.trainable = True

@@ -5,6 +5,7 @@ from train import create_model, get_anchors, get_classes, create_dataset
 from tensorflow import py_function
 from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss, mobile_yolo_body
 from yolo3.utils import get_random_data
+from keras_mobilenet import MobileNet
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -289,9 +290,26 @@ def test_get_random_data():
                 cv2.rectangle(img, tuple(b[:2].astype(int)), tuple(b[2:4].astype(int)), (255, 0, 0))
 
         plt.imshow(img)
-        plt.show()
+        plt.imsave('/home/zqh/Documents/K210-yolo-v3/tmp/house.jpg', img)
         # !  经过测试 y true 的xywh最终绝对是对应全局的【0-1】
         # ! 但是为什么在yolo loss里又好像是gird scale？
+
+
+def test_resize_img():
+    classes_path = 'model_data/voc_classes.txt'
+    anchors_path = 'model_data/tiny_yolo_anchors.txt'
+    class_names = get_classes(classes_path)
+    num_classes = len(class_names)
+    anchors = get_anchors(anchors_path)
+    input_shape = (224, 320)  # multiple of 32, hw
+    batch_size = 1
+    annotation_path = 'train.txt'
+    with open(annotation_path) as f:
+        lines = f.readlines()
+
+    img, box = get_random_data(lines[3], input_shape, False)
+    plt.imshow(img)
+    plt.imsave('')
 
 
 def test_mobile_yolo_05():
@@ -300,3 +318,44 @@ def test_mobile_yolo_05():
                                          include_top=False,
                                          weights='imagenet')
     model.summary()
+
+
+def test_mobile_yolo_75():
+    from keras_applications.mobilenet import MobileNet
+    m = MobileNet((224, 320, 3), .75, include_top=False)  # type:keras.Model
+
+
+def make_modelnet_base_weights():
+    inputs = keras.Input((224, 320, 3))
+
+    from tensorflow.python.keras.applications import MobileNet as o_moblie
+    for alpha in [.5, .75, 1.]:
+        om = o_moblie(input_tensor=inputs, alpha=alpha, include_top=False)  # type:keras.Model
+        oweights = om.get_weights()
+        nm = MobileNet(input_tensor=inputs, alpha=alpha)
+        nweights = nm.get_weights()
+
+        for i in range(len(nweights)):
+            nweights[i] = oweights[i][[slice(0, s) for s in nweights[i].shape]]
+
+        nm.set_weights(nweights)
+
+        keras.models.save_model(nm, f'model_data/mobilenet_v1_base_{int(alpha*10):2}.h5')
+
+
+def test_load_old_model():
+    m = keras.models.load_model('model_data/yolo_model_body_1_new.h5')  # type:keras.Model
+    m.summary()
+
+    model = mobile_yolo_body(keras.Input((224, 320, 3)), 3, 20, 1.)
+    model.summary()
+    keras.models.save_model(model, 'test_logs/small_mobilenet.h5')
+    new_weights = model.get_weights()
+    old_weights = m.get_weights()
+
+    for i in range(len(new_weights)):
+        new_weights[i] = old_weights[i][[slice(0, s) for s in new_weights[i].shape]]
+
+    model.set_weights(new_weights)
+
+    keras.models.save_model(model, 'test_logs/small_mobilenet.h5')
