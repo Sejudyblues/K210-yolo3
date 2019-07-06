@@ -340,7 +340,7 @@ def make_modelnet_base_weights():
 
         nm.set_weights(nweights)
 
-        keras.models.save_model(nm, f'model_data/mobilenet_v1_base_{int(alpha*10):2}.h5')
+        keras.models.save_model(nm, f'model_data/mobilenet_v1_base_{int(alpha*10)}.h5')
 
 
 def test_load_old_model():
@@ -359,3 +359,8 @@ def test_load_old_model():
     model.set_weights(new_weights)
 
     keras.models.save_model(model, 'test_logs/small_mobilenet.h5')
+
+
+def test_new_model():
+    model = mobile_yolo_body(keras.Input((224, 320, 3)), 3, 20, .75)
+    model.summary()

@@ -9,7 +9,7 @@ from timeit import default_timer as timer
 
 import numpy as np
 from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.models import load_model
+from tensorflow.python.keras.models import load_model, Model
 from tensorflow.python.keras.layers import Input
 from PIL import Image, ImageFont, ImageDraw
 
@@ -29,7 +29,7 @@ class YOLO(object):
         "model_path": 'model_data/yolo.h5',
         "anchors_path": 'model_data/yolo_anchors.txt',
         "classes_path": 'model_data/coco_classes.txt',
-        "score": 0.7,
+        "score": 0.6,
         "iou": 0.5,
         "model_image_size": (224, 320),
         "gpu_num": 1
@@ -72,7 +72,7 @@ class YOLO(object):
         num_anchors = len(self.anchors)
         num_classes = len(self.class_names)
         is_tiny_version = num_anchors == 6  # default setting
-        self.yolo_model = load_model(model_path, compile=False)
+        self.yolo_model = load_model(model_path)  # type:Model
         # except:
         #     self.yolo_model = mobile_yolo_body(Input(shape=(None, None, 3)), num_anchors // 2, num_classes, self.alpha)
         #     self.yolo_model.load_weights(self.model_path)  # make sure model, anchors and classes match

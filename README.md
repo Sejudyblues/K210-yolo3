@@ -54,6 +54,7 @@ usage: train.py [-h] [--alpha {0.5,0.75,1.0}]
                 [--annotation_path ANNOTATION_PATH]
                 [--weights_path WEIGHTS_PATH] [--learning_rate LEARNING_RATE]
                 [--classes_path CLASSES_PATH] [--anchors_path ANCHORS_PATH]
+                [--epochs EPOCHS] [--augment {True,False}]
 ```
 
 1.  train mobilenet yolo3 alpha = 1.
@@ -74,7 +75,7 @@ usage: train.py [-h] [--alpha {0.5,0.75,1.0}]
    python3 train.py --weights_path logs/xxxx-xxxx/yolo_model_body.h5
    ```
     
-**NOTE:** Default training 10 epochs, Due to limited time I did not add more options to control the training. 
+**NOTE:** Default training 10 epochs,data augment = True 
 
 ## Test
 

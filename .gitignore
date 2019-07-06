@@ -111,3 +111,4 @@ train.txt
 test_logs
 *.kmodel
 *.tflite
+output

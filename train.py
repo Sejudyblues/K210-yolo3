@@ -213,7 +213,7 @@ class YOLOSequence(Sequence):
         np.random.shuffle(self.annotation_lines)
 
 
-def main(annotation_path, classes_path, anchors_path, alpha, weights_path, learning_rate):
+def main(annotation_path, classes_path, anchors_path, alpha, weights_path, learning_rate, epochs, augment):
     # annotation_path = 'train.txt'
     # classes_path = 'model_data/voc_classes.txt'
     # anchors_path = 'model_data/tiny_yolo_anchors.txt'
@@ -252,7 +252,7 @@ def main(annotation_path, classes_path, anchors_path, alpha, weights_path, learn
         'yolo_loss': lambda y_true, y_pred: y_pred})
 
     print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-    train_set = create_dataset(lines[:num_train], batch_size, input_shape, anchors, num_classes)
+    train_set = create_dataset(lines[:num_train], batch_size, input_shape, anchors, num_classes, augment == 'True')
     vail_set = create_dataset(lines[num_train:], batch_size, input_shape, anchors, num_classes, random=False)
 
     shapes = (tuple([ins.shape for ins in model.input]), tuple(tf.TensorShape([batch_size, ])))
@@ -262,7 +262,7 @@ def main(annotation_path, classes_path, anchors_path, alpha, weights_path, learn
 
     try:
         model.fit(train_set,
-                  epochs=10,
+                  epochs=epochs,
                   validation_data=vail_set, validation_steps=40,
                   steps_per_epoch=max(1, num_train // batch_size),
                   callbacks=[logging, checkpoint],
@@ -288,5 +288,7 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', type=float, help='learning rate', default=0.0005)
     parser.add_argument('--classes_path', type=str, help='classes path', default='model_data/voc_classes.txt')
     parser.add_argument('--anchors_path', type=str, help='anchors path', default='model_data/tiny_yolo_anchors.txt')
+    parser.add_argument('--epochs', type=int, help='training epochs', default=10)
+    parser.add_argument('--augment', type=str, choices=['True', 'False'], help='use data augment', default='True')
     args = parser.parse_args(sys.argv[1:])
-    main(args.annotation_path, args.classes_path, args.anchors_path, args.alpha, args.weights_path, args.learning_rate)
+    main(args.annotation_path, args.classes_path, args.anchors_path, args.alpha, args.weights_path, args.learning_rate, args.epochs, args.augment)
