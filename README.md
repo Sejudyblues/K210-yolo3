@@ -109,7 +109,7 @@ ncc -i tflite -o k210model --channelwise-output --dataset ./images mobile_yolo.t
 Use [Kflash.py](https://github.com/kendryte/kflash.py) download `kpu_yolov3_test/kfpkg/kpu_yolov3.kfpkg` to KD233 board:
 
 ```sh
-kflash kpu_yolov3.kfpkg -B kd233 -p /dev/ttyUSB0 -b 2000000 -t
+kflash kpu_yolov3_test/kfpkg/kpu_yolov3.kfpkg -B kd233 -p /dev/ttyUSB0 -b 2000000 -t
 ```
 
 **NOTE:** I've just shown the most basic example to prove the validity of the model if you need to use at least the non-maximum suppression between multiple layers of output in your code.
