@@ -57,19 +57,13 @@ usage: train.py [-h] [--alpha {0.5,0.75,1.0}]
                 [--epochs EPOCHS] [--augment {True,False}]
 ```
 
-1.  train mobilenet yolo3 alpha = 1.
+1.  train mobilenet yolo3 alpha = xx
 
     ```sh
-    python3 train.py
+    python3 train.py --alpha xx
     ```
 
-2.  train mobilenet yolo3 alpha = .5
-    
-    ```sh
-    python3 train.py --alpha .5
-    ```
-
-3. load pre-train model
+2. load pre-train model
 
    ```sh
    python3 train.py --weights_path logs/xxxx-xxxx/yolo_model_body.h5
@@ -85,14 +79,15 @@ python3 yolo_video.py --model logs/xxxxxxxx/yolo_model_body.h5 --anchors model_d
 
 Then type the image path.
 
-You can try with:
+You can try with the model which I trained the 20 epochs mobilenet 0.75 model:
 
 ```sh
-python3 yolo_video.py --model model_data/yolo_model_body_1.h5  --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
+python3 ./yolo_video.py --model model_data/yolo_model_body_75.h5  --anchors model_data/tiny_yolo_anchors.txt --classes model_data/voc_classes.txt --image
 ```
 
-Then type `model_data/people.jpg`
+Then type `model_data/people.jpg`:
 
+![](model_data/people_res.jpg)
 
 ## Freeze
 
@@ -108,15 +103,32 @@ Please use latest [nncase](https://github.com/kendryte/nncase)
 ncc -i tflite -o k210model --channelwise-output --dataset ./images mobile_yolo.tflite ./yolo.kmodel
 ```
 
+
+## Demo
+
+Use [Kflash.py](https://github.com/kendryte/kflash.py) download `kpu_yolov3_test/kfpkg/kpu_yolov3.kfpkg` to KD233 board:
+
+```sh
+kflash kpu_yolov3.kfpkg -B kd233 -p /dev/ttyUSB0 -b 2000000 -t
+```
+
+**NOTE:** I've just shown the most basic example to prove the validity of the model if you need to use at least the non-maximum suppression between multiple layers of output in your code.
+
+![](model_data/k210_res.png)
+
+## Issue
+
+If you have any issue, contact me by QQ:`597323109` or email:`597323109@qq.com`
+
 ## Some issues to know
 
-1. Default anchors are used. If you use your own anchors, probably some changes are needed.
+1. **Default anchors are used.** If you use your own anchors, probably some changes are needed.
 
 2. The inference result is not totally the same as Darknet but the difference is small.
 
 3. The speed is slower than Darknet. Replacing PIL with opencv may help a little.
 
-4. Always load pretrained weights and freeze layers in the first stage of training. Or try Darknet training. It's OK if there is a mismatch warning.
+4. Always load pretrained weights in the first stage of training. Or try Darknet training. It's OK if there is a mismatch warning.
 
 5. The training strategy is for reference only. Adjust it according to your dataset and your goal. And add further strategy if needed.
 

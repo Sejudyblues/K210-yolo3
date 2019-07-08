@@ -364,3 +364,8 @@ def test_load_old_model():
 def test_new_model():
     model = mobile_yolo_body(keras.Input((224, 320, 3)), 3, 20, .75)
     model.summary()
+
+
+from tensorflow.python.keras.applications import MobileNetV2
+md = MobileNetV2((224, 320, 3), alpha=.75, include_top=False, weights=None)
+md.summary()
