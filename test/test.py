@@ -276,7 +276,7 @@ def test_get_random_data():
     for i in range(10):
         img, box = get_random_data(lines[i], input_shape, False)
         box = box[np.newaxis, :2, :]
-
+        # print(box,input_shape,anchors,num_classes)
         y_true = preprocess_true_boxes(box, input_shape, anchors, num_classes, is_print=True)
 
         for a in y_true:
@@ -285,15 +285,17 @@ def test_get_random_data():
             true_box[:, 2:4] *= input_shape[::-1]
 
             xyxy_box = center_to_corner(true_box)
-            print(xyxy_box)
+            # print(xyxy_box)
             for b in xyxy_box:
                 cv2.rectangle(img, tuple(b[:2].astype(int)), tuple(b[2:4].astype(int)), (255, 0, 0))
 
-        plt.imshow(img)
-        plt.imsave('/home/zqh/Documents/K210-yolo-v3/tmp/house.jpg', img)
+        # plt.imshow(img)
+        # plt.imsave('/home/zqh/Documents/K210-yolo-v3/tmp/house.jpg', img)
         # !  经过测试 y true 的xywh最终绝对是对应全局的【0-1】
         # ! 但是为什么在yolo loss里又好像是gird scale？
-
+        # ! 他这里给y true的的确是全局的[0-1],但是在yolo loss的时候他才转换到grid尺度.
+        
+test_get_random_data()
 
 def test_resize_img():
     classes_path = 'model_data/voc_classes.txt'
@@ -366,6 +368,6 @@ def test_new_model():
     model.summary()
 
 
-from tensorflow.python.keras.applications import MobileNetV2
-md = MobileNetV2((224, 320, 3), alpha=.75, include_top=False, weights=None)
-md.summary()
+# from tensorflow.python.keras.applications import MobileNetV2
+# md = MobileNetV2((224, 320, 3), alpha=.75, include_top=False, weights=None)
+# md.summary()

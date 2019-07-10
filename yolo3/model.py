@@ -288,8 +288,6 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
     # NOTE 再除以图像大小 缩小至全局范围的0-1
     true_boxes[..., 0:2] = boxes_xy / input_shape[::-1]
     true_boxes[..., 2:4] = boxes_wh / input_shape[::-1]
-    if is_print:
-        print('true_boxes', true_boxes)
 
     m = true_boxes.shape[0]
     grid_shapes = [input_shape // {0: 32, 1: 16, 2: 8}[l] for l in range(num_layers)]
@@ -302,10 +300,7 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
     anchor_mins = -anchor_maxes
     valid_mask = boxes_wh[..., 0] > 0
 
-    # if is_print:
-    #     print('anchor_maxes', anchor_maxes)
-    #     print('anchor_mins', anchor_mins)
-
+    # boxes wh shape = [true_boxes_num,2,2]
     for b in range(m):
         # Discard zero rows.
         wh = boxes_wh[b, valid_mask[b]]
@@ -330,6 +325,9 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
 
         # Find best anchor for each true box
         best_anchor = np.argmax(iou, axis=-1)
+        # if is_print:
+        #     print('iou', iou)
+        #     print('best_anchor', best_anchor)
 
         for t, n in enumerate(best_anchor):
             for l in range(num_layers):
@@ -346,10 +344,6 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes, is_prin
                     c = true_boxes[b, t, 4].astype('int32')
                     # ! y true 的xywh最终绝对是对应全局的【0-1】，但是为什么在yolo loss里又好像是gird scale？
                     y_true[l][b, j, i, k, 0:4] = true_boxes[b, t, 0:4]
-                    if is_print:
-                        print('true_boxes', true_boxes)
-                        print('y_true', y_true[l][b, j, i, k, 0:4])
-
                     y_true[l][b, j, i, k, 4] = 1
                     y_true[l][b, j, i, k, 5 + c] = 1
 
