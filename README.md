@@ -6,6 +6,8 @@
 
 A Tensorflow implementation of [keras-YOLOv3](https://github.com/qqwweee/keras-yolo3). Now I am ported to k210 ~
 
+**This code lacks scalability and good measurements during training, so I rewrote a [K210 Yolo v3 framework](https://github.com/zhen8838/K210_Yolo_framework).**
+
 ---
 
 ## Quick Start
